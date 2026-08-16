@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Snake Rush</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080e;color:#fff;font-family:Arial,sans-serif}
+body{display:flex;justify-content:center}
+#app{width:100%;max-width:480px;height:100%;position:relative;background:#08100d;overflow:hidden}
+.screen{position:absolute;inset:0;padding:20px;display:none;flex-direction:column;background:radial-gradient(circle at top,#10251b,#05080e 70%);overflow:auto}
+.screen.active{display:flex}
+h1{font-size:42px;margin:0 0 8px;text-align:center;font-style:italic;color:#00ff88}
+h2{margin:0;font-size:22px;color:#00ff88}
+.sub{text-align:center;color:#8fa69b;margin-bottom:30px}
+.header{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid #1c3a2a;margin-bottom:18px}
+button{border:0;border-radius:12px;padding:15px;width:100%;font-weight:800;font-size:16px;cursor:pointer}
+.main{background:#00ff88;color:#00150b;box-shadow:0 0 20px #00ff8844;margin:8px 0}
+.secondary{background:#12221a;color:#fff;border:1px solid #244a35;margin:6px 0}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.stats{display:flex;justify-content:space-around;background:#101c16;border:1px solid #244a35;border-radius:12px;padding:12px;margin-bottom:20px}
+.card{background:#101c16;border:1px solid #244a35;border-radius:14px;padding:15px;margin:7px 0}
+.card b{color:#00ff88}.muted{color:#8fa69b;font-size:13px}
+#game{padding:0;background:#000}
+.gamebar{height:65px;display:flex;align-items:center;justify-content:space-around;background:#101c16;border-bottom:1px solid #244a35}
+.gs{text-align:center}.gs small{display:block;color:#8fa69b;font-size:10px}.gs b{color:#00ff88}
+#boardWrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+canvas{background:#061009;image-rendering:pixelated;max-width:calc(100% - 14px);max-height:calc(100% - 14px);touch-action:none}
+.controls{height:150px;background:#0c1711;display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);justify-content:center;align-content:center;gap:7px}
+.controls button{padding:0;background:#193322;color:#fff;border:1px solid #315c40;font-size:25px}
+.up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}
+.modal{position:absolute;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.modal.show{display:flex}.modalbox{width:100%;max-width:350px;background:#101c16;border:1px solid #315c40;border-radius:18px;padding:24px;text-align:center}
+#splash{align-items:center;justify-content:center}.loader{color:#00ff88;margin-top:20px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section id="splash" class="screen active">
+<h1>SNAKE RUSH</h1><div class="sub">CLASSIC SNAKE • MODERN RUSH</div><div class="loader">● ● ●</div>
+</section>
+
+<section id="menu" class="screen">
+<div class="stats"><span>🪙 <b id="coins">0</b></span><span>🏆 <b id="best">0</b></span><span>⭐ <b id="lvl">1</b></span></div>
+<h1>SNAKE RUSH</h1><div class="sub">Choose your challenge</div>
+<button class="main" onclick="openMode()">▶ PLAY</button>
+<button class="secondary" onclick="campaign()">🎮 CAMPAIGN <span id="progress"></span></button>
+<div class="row"><button class="secondary" onclick="snakes()">🐍 SNAKES</button><button class="secondary" onclick="themes()">🎨 THEMES</button></div>
+<div class="row"><button class="secondary" onclick="achievements()">🏆 AWARDS</button><button class="secondary" onclick="stats()">📊 STATS</button></div>
+<button class="secondary" onclick="settings()">⚙ SETTINGS</button>
+</section>
+
+<section id="modes" class="screen">
+<div class="header"><h2>SELECT MODE</h2><button style="width:48px" class="secondary" onclick="show('menu')">✕</button></div>
+<div class="card" onclick="start('campaign',state.level)"><b>CLASSIC CAMPAIGN</b><p class="muted">8 levels, increasing speed and obstacles.</p></div>
+<div class="card" onclick="start('endless',1)"><b>ENDLESS MODE</b><p class="muted">Grow as long as you can. Speed increases.</p></div>
+<div class="card" onclick="start('time',1)"><b>TIME CHALLENGE</b><p class="muted">Score as much as possible in 60 seconds.</p></div>
+</section>
+
+<section id="list" class="screen"><div class="header"><h2 id="listTitle">LIST</h2><button style="width:48px" class="secondary" onclick="show('menu')">✕</button></div><div id="listBody"></div></section>
+
+<section id="game" class="screen">
+<div class="gamebar"><div class="gs"><small>LEVEL</small><b id="gLevel">1</b></div><div class="gs"><small>SCORE</small><b id="gScore">0</b></div><div class="gs"><small id="targetName">FOOD</small><b id="gTarget">0</b></div><button style="width:48px;padding:8px" class="secondary" onclick="pause()">Ⅱ</button></div>
+<div id="boardWrap"><canvas id="canvas" width="400" height="400"></canvas></div>
+<div class="controls"><button class="up" onclick="dir(0,-1)">▲</button><button class="left" onclick="dir(-1,0)">◀</button><button class="down" onclick="dir(0,1)">▼</button><button class="right" onclick="dir(1,0)">▶</button></div>
+</section>
+
+<div id="modal" class="modal"><div class="modalbox"><h2 id="modalTitle"></h2><p id="modalText" class="muted"></p><button class="main" id="modalA"></button><button class="secondary" id="modalB"></button></div></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const saved=JSON.parse(localStorage.getItem("SNAKE_RUSH_SAVE")||"null");
+const state=Object.assign({coins:0,level:1,best:0,snake:0,theme:"classic",games:0,food:0,wins:0,ach:[],sound:true},saved||{});
+const levels=[{target:10,speed:125,o:[]},{target:20,speed:115,o:[]},{target:30,speed:105,o:[]},{target:40,speed:95,o:[]},{target:50,speed:88,o:[[5,5],[5,6],[5,7],[14,12],[14,13],[14,14]]},{target:60,speed:82,o:[[4,4],[15,4],[4,15],[15,15],[9,9],[10,9],[9,10],[10,10]]},{target:75,speed:76,o:[[2,10],[3,10],[4,10],[15,10],[16,10],[17,10],[10,2],[10,3],[10,4],[10,15],[10,16],[10,17]]},{target:100,speed:68,o:[[6,6],[7,6],[8,6],[11,6],[12,6],[13,6],[6,13],[7,13],[8,13],[11,13],[12,13],[13,13]]}];
+const snakes=[["Rookie","#00ff88"],["Speed","#00d8ff"],["Hunter","#ffcc00"],["Shadow","#a855f7"],["Fire","#ff4757"],["Neon","#00ffff"],["Master","#e11d48"],["Legend","#ffd700"]];
+let mode="campaign",cur=1,snake=[],food={},vx=1,vy=0,nx=1,ny=0,score=0,eaten=0,timer=null,time=60,paused=false;
+const c=$("canvas"),ctx=c.getContext("2d");
+function save(){localStorage.setItem("SNAKE_RUSH_SAVE",JSON.stringify(state));ui()}
+function ui(){$("coins").textContent=state.coins;$("best").textContent=state.best;$("lvl").textContent=state.level;$("progress").textContent=state.level+"/8"}
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");ui()}
+function openMode(){show("modes")}
+function campaign(){list("CAMPAIGN",levels.map((l,i)=>`<div class="card" onclick="${i+1<=state.level?`start('campaign',${i+1})`:''}"><b>LEVEL ${i+1}</b><p class="muted">Target: ${l.target} food ${i+1<=state.level?"🔓":"🔒"}</p></div>`).join(""))}
+function list(t,html){$("listTitle").textContent=t;$("listBody").innerHTML=html;show("list")}
+function snakes(){list("SNAKES",snakes.map((s,i)=>`<div class="card" onclick="${i<state.level?`state.snake=${i};save()`:''}"><b style="color:${s[1]}">${s[0]} SNAKE ${state.snake===i?"✅":""}</b><p class="muted">${i<state.level?"Unlocked":"Unlock at Level "+(i+1)}</p></div>`).join(""))}
+function themes(){let t=[["Classic","#00ff88"],["Neon","#00d8ff"],["Purple","#d800ff"],["Fire","#ff4700"],["Ocean","#00ffcc"],["Forest","#a8ff00"],["Arcade","#ffcc00"]];list("THEMES",t.map((x,i)=>`<div class="card" onclick="state.theme='${x[0].toLowerCase()}';save()"><b style="color:${x[1]}">${x[0]} ${state.theme===x[0].toLowerCase()?"✅":""}</b></div>`).join(""))}
+function achievements(){let a=[["First Bite","Eat food",50],["Rookie Winner","Win Level 1",100],["Speed Demon","Score 50",150],["Snake Master","Reach Level 5",200],["Legend","Beat Level 8",500]];list("ACHIEVEMENTS",a.map(x=>`<div class="card"><b>🏆 ${x[0]}</b><p class="muted">${x[1]} • Reward ${x[2]} coins</p></div>`).join(""))}
+function stats(){list("STATISTICS",`<div class="card">Games Played: <b>${state.games}</b></div><div class="card">Campaign Wins: <b>${state.wins}</b></div><div class="card">Food Eaten: <b>${state.food}</b></div><div class="card">High Score: <b>${state.best}</b></div>`)}
+function settings(){list("SETTINGS",`<div class="card"><b>Sound</b><button class="secondary" onclick="state.sound=!state.sound;save()">${state.sound?"ON 🔊":"OFF 🔇"}</button></div><div class="card"><b>Reset Progress</b><button class="secondary" onclick="resetAll()">RESET</button></div>`)}
+function resetAll(){if(confirm("Reset all progress?")){localStorage.removeItem("SNAKE_RUSH_SAVE");location.reload()}}
+function start(m,l){mode=m;cur=l||1;show("game");setTimeout(reset,80)}
+function reset(){clearInterval(timer);score=0;eaten=0;time=60;vx=1;vy=0;nx=1;ny=0;paused=false;snake=[{x:5,y:10},{x:4,y:10},{x:3,y:10}];spawn();draw();hud();timer=setInterval(tick,mode==="campaign"?levels[cur-1].speed:105);if(mode==="time")setInterval(()=>{if(!paused&&time>0){time--;hud();if(time===0)over("Time expired!")}},1000)}
+function spawn(){let ok=false;while(!ok){food={x:Math.floor(Math.random()*20),y:Math.floor(Math.random()*20)};ok=!snake.some(s=>s.x===food.x&&s.y===food.y)&&!obstacle(food.x,food.y)}}
+function obstacle(x,y){return mode==="campaign"&&levels[cur-1].o.some(o=>o[0]===x&&o[1]===y)}
+function tick(){if(paused)return;vx=nx;vy=ny;let h={x:snake[0].x+vx,y:snake[0].y+vy};if(h.x<0||h.x>=20||h.y<0||h.y>=20)return over("Hit the wall!");if(snake.some(s=>s.x===h.x&&s.y===h.y)||obstacle(h.x,h.y))return over("Crashed!");snake.unshift(h);if(h.x===food.x&&h.y===food.y){eaten++;score+=10;state.food++;if(mode==="campaign"&&eaten>=levels[cur-1].target)return win();spawn()}else snake.pop();if(mode==="endless"&&eaten%8===0&&eaten>0){clearInterval(timer);timer=setInterval(tick,Math.max(55,105-eaten));}draw();hud();if(score>state.best){state.best=score;save()}}
+function dir(x,y){if(x!==-vx||y!==-vy){nx=x;ny=y}}
+function hud(){$("gLevel").textContent=mode==="campaign"?cur:mode.toUpperCase();$("gScore").textContent=score;$("targetName").textContent=mode==="time"?"TIME":mode==="campaign"?"FOOD":"EATEN";$("gTarget").textContent=mode==="time"?time+"s":mode==="campaign"?eaten+"/"+levels[cur-1].target:eaten}
+function draw(){let size=Math.min(c.clientWidth||400,c.clientHeight||400);c.width=c.height=Math.max(280,size);let t=c.width/20;ctx.fillStyle=state.theme==="neon"?"#070719":state.theme==="fire"?"#190505":state.theme==="purple"?"#13051a":"#061009";ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle="#173322";for(let i=0;i<=20;i++){ctx.beginPath();ctx.moveTo(i*t,0);ctx.lineTo(i*t,c.height);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i*t);ctx.lineTo(c.width,i*t);ctx.stroke()}ctx.fillStyle="#ff4757";if(mode==="campaign")levels[cur-1].o.forEach(o=>ctx.fillRect(o[0]*t+1,o[1]*t+1,t-2,t-2));ctx.fillStyle="#ff4757";ctx.beginPath();ctx.arc(food.x*t+t/2,food.y*t+t/2,t*.35,0,7);ctx.fill();snake.forEach((s,i)=>{ctx.fillStyle=i?"#00ff88":"#fff";ctx.fillRect(s.x*t+1,s.y*t+1,t-2,t-2)})}
+function popup(title,text,a,b,fa,fb){$("modalTitle").textContent=title;$("modalText").textContent=text;$("modalA").textContent=a;$("modalB").textContent=b;$("modalA").onclick=fa;$("modalB").onclick=fb;$("modal").classList.add("show")}
+function closeModal(){$("modal").classList.remove("show")}
+function pause(){paused=true;popup("PAUSED","Game paused.","RESUME","MAIN MENU",()=>{paused=false;closeModal()},()=>{closeModal();show("menu");clearInterval(timer)})}
+function over(r){clearInterval(timer);state.games++;if(score>state.best)state.best=score;save();popup("GAME OVER",r+" Score: "+score,"TRY AGAIN","MAIN MENU",()=>{closeModal();reset()},()=>{closeModal();show("menu")})}
+function win(){clearInterval(timer);state.wins++;state.coins+=50*cur;if(cur===state.level&&state.level<8)state.level++;save();popup("🎉 LEVEL COMPLETE","You earned "+50*cur+" coins.","NEXT LEVEL","MAIN MENU",()=>{closeModal();if(cur<8){cur++;reset()}else show("menu")},()=>{closeModal();show("menu")})}
+let sx=0,sy=0;
+c.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+c.addEventListener("touchend",e=>{let dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<15)return;if(Math.abs(dx)>Math.abs(dy))dir(dx>0?1:-1,0);else dir(0,dy>0?1:-1)},{passive:true});
+window.addEventListener("keydown",e=>{if(e.key==="ArrowUp")dir(0,-1);if(e.key==="ArrowDown")dir(0,1);if(e.key==="ArrowLeft")dir(-1,0);if(e.key==="ArrowRight")dir(1,0);if(e.key===" "&&$("game").classList.contains("active"))pause()});
+window.addEventListener("resize",()=>{if($("game").classList.contains("active"))draw()});
+ui();setTimeout(()=>show("menu"),1200);
+</script>
+</body>
+</html>
